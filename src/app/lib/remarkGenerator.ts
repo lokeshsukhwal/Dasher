@@ -1,205 +1,171 @@
-import { ComparisonResult, GroupedRemarks, FinalRemark } from '@/types';
-import { formatTimeForDisplay } from './utils';
+import { ComparisonResult, GroupedChanges, FinalRemark } from '@/types';
+import { formatDayRange, DAY_SHORT } from './utils';
 
-function formatDaysList(days: string[]): string {
-  if (days.length === 0) return '';
-  if (days.length === 1) return days[0];
-  if (days.length === 2) return days.join(' and ');
-
-  // Check for consecutive days
-  const allDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const indices = days.map(d => allDays.indexOf(d)).sort((a, b) => a - b);
-
-  let isConsecutive = true;
-  for (let i = 1; i < indices.length; i++) {
-    if (indices[i] - indices[i - 1] !== 1) {
-      isConsecutive = false;
-      break;
-    }
-  }
-
-  if (isConsecutive && days.length >= 3) {
-    return `${days[0]}-${days[days.length - 1]}`;
-  }
-
-  if (days.length === 7) {
-    return 'Mon-Sun';
-  }
-
-  return days.slice(0, -1).join(', ') + ' and ' + days[days.length - 1];
-}
-
-function getShortDay(day: string): string {
-  const map: Record<string, string> = {
-    'Sunday': 'Sun',
-    'Monday': 'Mon',
-    'Tuesday': 'Tue',
-    'Wednesday': 'Wed',
-    'Thursday': 'Thu',
-    'Friday': 'Fri',
-    'Saturday': 'Sat',
-  };
-  return map[day] || day;
+function getShortDaysList(results: ComparisonResult[]): string {
+  const days = results.map(r => r.dayShort);
+  return formatDayRange(results.map(r => r.day));
 }
 
 export function generateFinalRemarks(
   results: ComparisonResult[],
-  grouped: GroupedRemarks
+  grouped: GroupedChanges
 ): FinalRemark[] {
   const remarks: FinalRemark[] = [];
-
-  // Handle reduced hours (these should be updated)
-  if (grouped.reduced.length > 0) {
-    if (grouped.reduced.length === 1) {
-      const r = grouped.reduced[0];
+  
+  // Collect all reduced changes
+  const allReduced = [
+    ...grouped.reducedOpen,
+    ...grouped.reducedClose,
+    ...grouped.reducedFull,
+    ...grouped.closedNow,
+  ];
+  
+  // Collect all extended changes
+  const allExtended = [
+    ...grouped.extendedOpen,
+    ...grouped.extendedClose,
+    ...grouped.extendedFull,
+    ...grouped.blankToHours,
+  ];
+  
+  // Generate remarks for REDUCED hours (Action Required)
+  if (allReduced.length > 0) {
+    if (allReduced.length === 1) {
+      const r = allReduced[0];
+      let remarkText = '';
+      
+      if (r.changeType === 'CLOSED_NOW') {
+        remarkText = `Hours Change: ${r.day} is now Closed (was ${r.oldOpenTime} - ${r.oldCloseTime})`;
+      } else {
+        remarkText = `Hours Change: ${r.dayRemark}`;
+      }
+      
       remarks.push({
-        title: `Single Hours Change [Hours Found / Reduce Hours]`,
-        remark: `Hours change: ${r.dayRemark}`,
+        title: 'Single Hour Change (Hours Found / Reduce Hours)',
+        remark: remarkText,
         type: 'reduced',
         actionRequired: true,
+        priority: 1,
       });
     } else {
-      const remarkLines = grouped.reduced.map((r: any) => `         ${r.dayRemark}`);
+      const remarkLines = allReduced.map(r => {
+        if (r.changeType === 'CLOSED_NOW') {
+          return `\t${r.day} is now Closed (was ${r.oldOpenTime} - ${r.oldCloseTime})`;
+        }
+        return `\t${r.dayRemark}`;
+      });
+      
       remarks.push({
-        title: `Multiple Hours Change [Hours Found / Reduce]`,
-        remark: `Hours change:\n${remarkLines.join('\n')}`,
+        title: 'Multiple Hours Change (Hours Found / Reduce Hours)',
+        remark: `Hours Change:\n${remarkLines.join('\n')}`,
         type: 'reduced',
         actionRequired: true,
+        priority: 1,
       });
     }
   }
-
-  // Handle closed now
-  if (grouped.closedNow.length > 0) {
-    const days = grouped.closedNow.map((r: any) => r.day);
-    const daysStr = formatDaysList(days);
-
+  
+  // Generate remarks for EXTENDED hours (No Action Required)
+  if (grouped.extendedClose.length > 0) {
+    const daysStr = getShortDaysList(grouped.extendedClose);
+    const sample = grouped.extendedClose[0];
+    
     remarks.push({
-      title: `Store Now Closed [${days.length} day(s)]`,
-      remark: `Hours change: ${daysStr} is now Closed.\n` +
-        grouped.closedNow.map((r: any) =>
-          `         ${r.day}: was ${formatTimeForDisplay(r.oldHours.open)} - ${formatTimeForDisplay(r.oldHours.close)}, now Closed`
-        ).join('\n'),
-      type: 'reduced',
-      actionRequired: true,
-    });
-  }
-
-  // Handle extended hours (NOT changing)
-  if (grouped.extended.length > 0) {
-    const days = grouped.extended.map((r: any) => r.day);
-    const daysStr = formatDaysList(days.map(getShortDay));
-
-    // Group by change type
-    const openTimeExtended = grouped.extended.filter((r: any) => r.changeDetails.openTimeExtended && !r.changeDetails.closeTimeExtended);
-    const closeTimeExtended = grouped.extended.filter((r: any) => r.changeDetails.closeTimeExtended && !r.changeDetails.openTimeExtended);
-    const fullTimeExtended = grouped.extended.filter((r: any) => r.changeDetails.openTimeExtended && r.changeDetails.closeTimeExtended);
-
-    if (fullTimeExtended.length > 0) {
-      const sample = fullTimeExtended[0];
-      const fullDays = formatDaysList(fullTimeExtended.map((r: any) => getShortDay(r.day)));
-      remarks.push({
-        title: `Extended Hours - Full Time [Not Changing]`,
-        remark: `Differing Hours [Not changing]: GMB shows that ${fullDays} fulltime is ` +
-          `${formatTimeForDisplay(sample.newHours.open)}-${formatTimeForDisplay(sample.newHours.close)} ` +
-          `[we have ${formatTimeForDisplay(sample.oldHours.open)} - ${formatTimeForDisplay(sample.oldHours.close)}]. ` +
-          `Not changing, as this would extend store hours.`,
-        type: 'extended',
-        actionRequired: false,
-      });
-    }
-
-    if (openTimeExtended.length > 0) {
-      const sample = openTimeExtended[0];
-      const openDays = formatDaysList(openTimeExtended.map((r: any) => getShortDay(r.day)));
-      remarks.push({
-        title: `Extended Hours - Open Time [Not Changing]`,
-        remark: `Differing Hours [Not changing]: GMB shows that ${openDays} open time is ` +
-          `${formatTimeForDisplay(sample.newHours.open)} [we have ${formatTimeForDisplay(sample.oldHours.open)}]. ` +
-          `Not changing, as this would extend store hours.`,
-        type: 'extended',
-        actionRequired: false,
-      });
-    }
-
-    if (closeTimeExtended.length > 0) {
-      const sample = closeTimeExtended[0];
-      const closeDays = formatDaysList(closeTimeExtended.map((r: any) => getShortDay(r.day)));
-      remarks.push({
-        title: `Extended Hours - End Time [Not Changing]`,
-        remark: `Differing Hours [Not changing]: GMB shows that ${closeDays} end time is ` +
-          `${formatTimeForDisplay(sample.newHours.close)} [we have ${formatTimeForDisplay(sample.oldHours.close)}]. ` +
-          `Not changing, as this would extend store hours.`,
-        type: 'extended',
-        actionRequired: false,
-      });
-    }
-  }
-
-  // Handle became 24 hours
-  if (grouped.became24Hours.length > 0) {
-    const days = grouped.became24Hours.map((r: any) => r.day);
-    const daysStr = formatDaysList(days.map(getShortDay));
-
-    remarks.push({
-      title: `Extended to 24 Hours [Not Changing]`,
-      remark: `Differing Hours [Not changing]: GMB shows that ${daysStr} is now Open 24 hours. ` +
-        `Not changing, as this would extend store hours.`,
+      title: 'Extended Hours END Time',
+      remark: `Differing Hours (Not Changing): GMB shows that ${daysStr} end time is ${sample.newCloseTime} (we have ${sample.oldCloseTime}). Not changing, as this would extend store hours.`,
       type: 'extended',
       actionRequired: false,
+      priority: 2,
     });
   }
-
-  // Handle no changes
-  if (grouped.noChange.length > 0 && grouped.reduced.length === 0 && grouped.extended.length === 0 && grouped.closedNow.length === 0) {
+  
+  if (grouped.extendedOpen.length > 0) {
+    const daysStr = getShortDaysList(grouped.extendedOpen);
+    const sample = grouped.extendedOpen[0];
+    
     remarks.push({
-      title: `Hours Found - No Change`,
-      remark: `No change in hours.`,
+      title: 'Extended Hours Open Time',
+      remark: `Differing Hours (Not Changing): GMB shows that ${daysStr} open time is ${sample.newOpenTime} (we have ${sample.oldOpenTime}). Not changing, as this would extend store hours.`,
+      type: 'extended',
+      actionRequired: false,
+      priority: 2,
+    });
+  }
+  
+  if (grouped.extendedFull.length > 0) {
+    const daysStr = getShortDaysList(grouped.extendedFull);
+    const sample = grouped.extendedFull[0];
+    
+    let newTimeStr = sample.newHours.is24Hours 
+      ? 'Open 24 Hours' 
+      : `${sample.newOpenTime}-${sample.newCloseTime}`;
+    
+    remarks.push({
+      title: 'Extended Hours FULL Time',
+      remark: `Differing Hours (Not Changing): GMB shows that ${daysStr} full time is ${newTimeStr} (we have ${sample.oldOpenTime}-${sample.oldCloseTime}). Not changing, as this would extend store hours.`,
+      type: 'extended',
+      actionRequired: false,
+      priority: 2,
+    });
+  }
+  
+  // Handle blank to hours (For Blank MINT)
+  if (grouped.blankToHours.length > 0) {
+    const daysStr = getShortDaysList(grouped.blankToHours);
+    const sample = grouped.blankToHours[0];
+    
+    remarks.push({
+      title: 'For Blank MINT / If no Hours given on MINT',
+      remark: `Differing Hours (Not Changing): GMB shows that ${daysStr} full time is ${sample.newOpenTime}-${sample.newCloseTime} (we have Closed). Not changing, as this would extend store hours.`,
+      type: 'blank',
+      actionRequired: false,
+      priority: 3,
+    });
+  }
+  
+  // No changes
+  if (allReduced.length === 0 && allExtended.length === 0) {
+    remarks.push({
+      title: 'Hours Found No Change',
+      remark: 'No change in hours.',
       type: 'noChange',
       actionRequired: false,
+      priority: 4,
     });
   }
-
-  // If only extended and no change
-  if (remarks.length === 0 && grouped.extended.length === 0 && grouped.noChange.length > 0) {
-    remarks.push({
-      title: `Hours Found - No Change`,
-      remark: `No change in hours.`,
-      type: 'noChange',
-      actionRequired: false,
-    });
-  }
-
-  return remarks;
+  
+  // Sort by priority
+  return remarks.sort((a, b) => a.priority - b.priority);
 }
 
 export function generateCopyableRemark(remarks: FinalRemark[]): string {
   if (remarks.length === 0) {
     return 'No change in hours.';
   }
+  
+  const lines: string[] = [];
+  
+  remarks.forEach((r, index) => {
+    if (index > 0) lines.push('');
+    lines.push(`${r.title}:`);
+    lines.push(`Remark: ${r.remark}`);
+  });
+  
+  return lines.join('\n');
+}
 
+export function generateQuickRemark(remarks: FinalRemark[]): string {
+  // Generate just the action-oriented remark
   const actionRequired = remarks.filter(r => r.actionRequired);
-  const noAction = remarks.filter(r => !r.actionRequired);
-
-  let output = '';
-
+  
   if (actionRequired.length > 0) {
-    output += '=== ACTION REQUIRED ===\n\n';
-    actionRequired.forEach(r => {
-      output += `${r.title}\n`;
-      output += `Remark: ${r.remark}\n\n`;
-    });
+    return actionRequired.map(r => r.remark).join('\n\n');
   }
-
+  
+  const noAction = remarks.filter(r => !r.actionRequired);
   if (noAction.length > 0) {
-    if (actionRequired.length > 0) {
-      output += '=== NO ACTION NEEDED ===\n\n';
-    }
-    noAction.forEach(r => {
-      output += `${r.title}\n`;
-      output += `Remark: ${r.remark}\n\n`;
-    });
+    return noAction[0].remark;
   }
-
-  return output.trim();
+  
+  return 'No change in hours.';
 }

@@ -15,6 +15,16 @@ export const DAYS_OF_WEEK = [
   'Saturday',
 ] as const;
 
+export const DAY_SHORT: Record<string, string> = {
+  'Sunday': 'Sun',
+  'Monday': 'Mon',
+  'Tuesday': 'Tue',
+  'Wednesday': 'Wed',
+  'Thursday': 'Thu',
+  'Friday': 'Fri',
+  'Saturday': 'Sat',
+};
+
 export const DAY_ABBREVIATIONS: Record<string, string> = {
   'sun': 'Sunday',
   'mon': 'Monday',
@@ -43,36 +53,36 @@ export function normalizeDay(day: string): string {
 export function timeToMinutes(time: string | null): number | null {
   if (!time) return null;
   
-  const cleaned = time.toUpperCase().replace(/\s+/g, '');
+  const cleaned = time.toUpperCase().replace(/\s+/g, ' ').trim();
   
-  // Handle various formats
-  const match = cleaned.match(/^(\d{1,2}):?(\d{2})?\s*(AM|PM)?$/i);
-  
-  if (!match) {
-    // Try alternative formats
-    const altMatch = cleaned.match(/^(\d{1,2})(AM|PM)$/i);
-    if (altMatch) {
-      let hours = parseInt(altMatch[1], 10);
-      const period = altMatch[2].toUpperCase();
-      
-      if (period === 'PM' && hours !== 12) hours += 12;
-      if (period === 'AM' && hours === 12) hours = 0;
-      
-      return hours * 60;
-    }
-    return null;
-  }
-  
-  let hours = parseInt(match[1], 10);
-  const minutes = match[2] ? parseInt(match[2], 10) : 0;
-  const period = match[3]?.toUpperCase();
-  
-  if (period) {
+  // Handle "12 AM", "12 PM" format
+  const simpleMatch = cleaned.match(/^(\d{1,2})\s*(AM|PM)$/i);
+  if (simpleMatch) {
+    let hours = parseInt(simpleMatch[1], 10);
+    const period = simpleMatch[2].toUpperCase();
+    
     if (period === 'PM' && hours !== 12) hours += 12;
     if (period === 'AM' && hours === 12) hours = 0;
+    
+    return hours * 60;
   }
   
-  return hours * 60 + minutes;
+  // Handle "9:00 AM", "10:30 PM" format
+  const fullMatch = cleaned.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+  if (fullMatch) {
+    let hours = parseInt(fullMatch[1], 10);
+    const minutes = parseInt(fullMatch[2], 10);
+    const period = fullMatch[3]?.toUpperCase();
+    
+    if (period) {
+      if (period === 'PM' && hours !== 12) hours += 12;
+      if (period === 'AM' && hours === 12) hours = 0;
+    }
+    
+    return hours * 60 + minutes;
+  }
+  
+  return null;
 }
 
 export function minutesToTime(minutes: number): string {
@@ -94,8 +104,43 @@ export function formatTimeForDisplay(time: string | null): string {
   return minutesToTime(minutes);
 }
 
-export function copyToClipboard(text: string): Promise<boolean> {
-  return navigator.clipboard.writeText(text)
-    .then(() => true)
-    .catch(() => false);
+export function formatDayRange(days: string[]): string {
+  if (days.length === 0) return '';
+  if (days.length === 1) return days[0];
+  
+  const shortDays = days.map(d => DAY_SHORT[d] || d);
+  
+  if (days.length === 7) {
+    return 'Mon-Sun';
+  }
+  
+  // Check if consecutive
+  const dayIndices = days.map(d => DAYS_OF_WEEK.indexOf(d as any)).filter(i => i !== -1).sort((a, b) => a - b);
+  
+  let isConsecutive = true;
+  for (let i = 1; i < dayIndices.length; i++) {
+    if (dayIndices[i] - dayIndices[i - 1] !== 1) {
+      isConsecutive = false;
+      break;
+    }
+  }
+  
+  if (isConsecutive && days.length >= 3) {
+    return `${shortDays[0]}-${shortDays[shortDays.length - 1]}`;
+  }
+  
+  if (days.length === 2) {
+    return shortDays.join(' and ');
+  }
+  
+  return shortDays.slice(0, -1).join(', ') + ' and ' + shortDays[shortDays.length - 1];
+}
+
+export async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
 }

@@ -1,68 +1,66 @@
 'use client';
 
 import React from 'react';
-import { Card } from './ui/Card';
-import { cn } from '@/lib/utils';
 import { LucideIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface StatsCardProps {
   title: string;
   value: number;
   icon: LucideIcon;
   variant: 'success' | 'warning' | 'danger' | 'info' | 'default';
-  description?: string;
 }
 
-export function StatsCard({ title, value, icon: Icon, variant, description }: StatsCardProps) {
+export function StatsCard({ title, value, icon: Icon, variant }: StatsCardProps) {
   const variants = {
     success: {
-      bg: 'bg-success-50',
-      iconBg: 'bg-success-100',
-      iconColor: 'text-success-600',
-      valueColor: 'text-success-700',
+      bg: 'bg-gradient-to-br from-emerald-50 to-emerald-100',
+      iconBg: 'bg-emerald-500',
+      valueColor: 'text-emerald-700',
+      border: 'border-emerald-200',
     },
     warning: {
-      bg: 'bg-warning-50',
-      iconBg: 'bg-warning-100',
-      iconColor: 'text-warning-600',
-      valueColor: 'text-warning-700',
+      bg: 'bg-gradient-to-br from-amber-50 to-amber-100',
+      iconBg: 'bg-amber-500',
+      valueColor: 'text-amber-700',
+      border: 'border-amber-200',
     },
     danger: {
-      bg: 'bg-danger-50',
-      iconBg: 'bg-danger-100',
-      iconColor: 'text-danger-600',
-      valueColor: 'text-danger-700',
+      bg: 'bg-gradient-to-br from-red-50 to-red-100',
+      iconBg: 'bg-red-500',
+      valueColor: 'text-red-700',
+      border: 'border-red-200',
     },
     info: {
-      bg: 'bg-primary-50',
-      iconBg: 'bg-primary-100',
-      iconColor: 'text-primary-600',
-      valueColor: 'text-primary-700',
+      bg: 'bg-gradient-to-br from-blue-50 to-blue-100',
+      iconBg: 'bg-blue-500',
+      valueColor: 'text-blue-700',
+      border: 'border-blue-200',
     },
     default: {
-      bg: 'bg-dark-50',
-      iconBg: 'bg-dark-100',
-      iconColor: 'text-dark-600',
-      valueColor: 'text-dark-700',
+      bg: 'bg-gradient-to-br from-gray-50 to-gray-100',
+      iconBg: 'bg-gray-500',
+      valueColor: 'text-gray-700',
+      border: 'border-gray-200',
     },
   };
   
   const v = variants[variant];
   
   return (
-    <Card className={cn('transition-all duration-300 hover:scale-105', v.bg)}>
+    <div className={cn(
+      'rounded-2xl p-5 border transition-all duration-300 hover:scale-105 hover:shadow-lg',
+      v.bg, v.border
+    )}>
       <div className="flex items-center gap-4">
-        <div className={cn('p-3 rounded-xl', v.iconBg)}>
-          <Icon className={cn('w-6 h-6', v.iconColor)} />
+        <div className={cn('p-3 rounded-xl shadow-lg', v.iconBg)}>
+          <Icon className="w-6 h-6 text-white" />
         </div>
         <div>
-          <p className="text-sm font-medium text-dark-500">{title}</p>
-          <p className={cn('text-2xl font-bold', v.valueColor)}>{value}</p>
-          {description && (
-            <p className="text-xs text-dark-400 mt-1">{description}</p>
-          )}
+          <p className="text-sm font-medium text-gray-500">{title}</p>
+          <p className={cn('text-3xl font-black', v.valueColor)}>{value}</p>
         </div>
       </div>
-    </Card>
+    </div>
   );
 }

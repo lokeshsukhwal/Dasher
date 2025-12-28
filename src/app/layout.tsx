@@ -8,12 +8,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'Business Hours Comparator | DoorDash Operations',
-  description: 'Compare and verify business hour changes for DoorDash delivery operations. Generate professional verification remarks instantly.',
-  keywords: ['business hours', 'comparison', 'verification', 'DoorDash', 'operations'],
-  authors: [{ name: 'Operations Team' }],
+  title: 'Business Hours Comparator | Operations Tool',
+  description: 'Compare and verify business hour changes. Generate professional verification remarks instantly.',
   viewport: 'width=device-width, initial-scale=1',
-  themeColor: '#2563eb',
 };
 
 export default function RootLayout({

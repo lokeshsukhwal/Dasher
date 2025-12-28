@@ -1,116 +1,156 @@
 'use client';
 
 import React from 'react';
-import { Card } from './ui/Card';
+import { Card, CardHeader, CardTitle, CardContent } from './ui/Card';
+import { Badge } from './ui/Badge';
 import { ComparisonResult } from '@/types';
-import { formatTimeForDisplay } from '@/lib/utils';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { Table, ArrowDown, ArrowUp, Minus, XCircle, CheckCircle } from 'lucide-react';
 
 interface ComparisonTableProps {
-    results: ComparisonResult[] | null;
+  results: ComparisonResult[];
 }
 
 export function ComparisonTable({ results }: ComparisonTableProps) {
-    const [expandedDay, setExpandedDay] = React.useState<string | null>(null);
-
-    if (!results || results.length === 0) {
-        return null;
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'Extended':
+        return (
+          <Badge variant="warning" className="gap-1">
+            <ArrowUp className="w-3 h-3" />
+            Extended
+          </Badge>
+        );
+      case 'Reduced':
+        return (
+          <Badge variant="danger" className="gap-1">
+            <ArrowDown className="w-3 h-3" />
+            Reduced
+          </Badge>
+        );
+      case 'No Change':
+        return (
+          <Badge variant="success" className="gap-1">
+            <Minus className="w-3 h-3" />
+            No Change
+          </Badge>
+        );
+      case 'Closed Now':
+        return (
+          <Badge variant="danger" className="gap-1">
+            <XCircle className="w-3 h-3" />
+            Closed Now
+          </Badge>
+        );
+      case 'Open Now':
+        return (
+          <Badge variant="info" className="gap-1">
+            <CheckCircle className="w-3 h-3" />
+            Open Now
+          </Badge>
+        );
+      default:
+        return <Badge>{status}</Badge>;
     }
+  };
 
-    const getStatusIcon = (result: ComparisonResult) => {
-        if (result.changeType === 'NO_CHANGE') {
-            return '✓';
-        }
-        if (result.changeDetails.openTimeExtended || result.changeDetails.closeTimeExtended) {
-            return '↑';
-        }
-        if (result.changeDetails.openTimeReduced || result.changeDetails.closeTimeReduced) {
-            return '↓';
-        }
-        if (result.newHours.isClosed) {
-            return '×';
-        }
-        return '→';
-    };
+  const getRowBackground = (status: string) => {
+    switch (status) {
+      case 'Extended':
+        return 'bg-amber-50/50 hover:bg-amber-50';
+      case 'Reduced':
+      case 'Closed Now':
+        return 'bg-red-50/50 hover:bg-red-50';
+      case 'No Change':
+        return 'bg-emerald-50/30 hover:bg-emerald-50/50';
+      default:
+        return 'hover:bg-gray-50';
+    }
+  };
 
-    const getStatusColor = (result: ComparisonResult) => {
-        if (result.changeType === 'NO_CHANGE') {
-            return 'bg-green-50 border-green-200';
-        }
-        if (result.changeDetails.openTimeExtended || result.changeDetails.closeTimeExtended) {
-            return 'bg-blue-50 border-blue-200';
-        }
-        if (result.changeDetails.openTimeReduced || result.changeDetails.closeTimeReduced) {
-            return 'bg-yellow-50 border-yellow-200';
-        }
-        return 'bg-red-50 border-red-200';
-    };
-
-    return (
-        <Card className="mt-8">
-            <div className="overflow-x-auto">
-                <table className="w-full">
-                    <thead>
-                        <tr className="border-b">
-                            <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Day</th>
-                            <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Old Hours</th>
-                            <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">New Hours</th>
-                            <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {results.map((result) => (
-                            <React.Fragment key={result.day}>
-                                <tr
-                                    className={`border-b transition-colors cursor-pointer hover:bg-gray-50 ${getStatusColor(result)}`}
-                                    onClick={() => setExpandedDay(expandedDay === result.day ? null : result.day)}
-                                >
-                                    <td className="px-6 py-3 text-sm font-medium text-gray-900">{result.day}</td>
-                                    <td className="px-6 py-3 text-sm text-gray-600">
-                                        {result.oldHours.isClosed ? 'Closed' : `${formatTimeForDisplay(result.oldHours.open)} - ${formatTimeForDisplay(result.oldHours.close)}`}
-                                    </td>
-                                    <td className="px-6 py-3 text-sm text-gray-600">
-                                        {result.newHours.isClosed ? 'Closed' : `${formatTimeForDisplay(result.newHours.open)} - ${formatTimeForDisplay(result.newHours.close)}`}
-                                    </td>
-                                    <td className="px-6 py-3 text-sm font-medium">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-lg">{getStatusIcon(result)}</span>
-                                            {expandedDay === result.day ? (
-                                                <ChevronUp className="w-4 h-4" />
-                                            ) : (
-                                                <ChevronDown className="w-4 h-4" />
-                                            )}
-                                        </div>
-                                    </td>
-                                </tr>
-                                {expandedDay === result.day && (
-                                    <tr className="bg-gray-50">
-                                        <td colSpan={4} className="px-6 py-3">
-                                            <div className="space-y-2 text-sm">
-                                                {result.changeType === 'NO_CHANGE' && (
-                                                    <p className="text-green-700">✓ No changes</p>
-                                                )}
-                                                {result.changeDetails.openTimeExtended && (
-                                                    <p className="text-blue-700">Opening time extended</p>
-                                                )}
-                                                {result.changeDetails.closeTimeExtended && (
-                                                    <p className="text-blue-700">Closing time extended</p>
-                                                )}
-                                                {result.changeDetails.openTimeReduced && (
-                                                    <p className="text-yellow-700">Opening time reduced</p>
-                                                )}
-                                                {result.changeDetails.closeTimeReduced && (
-                                                    <p className="text-yellow-700">Closing time reduced</p>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                )}
-                            </React.Fragment>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        </Card>
-    );
+  return (
+    <Card variant="glass">
+      <CardHeader>
+        <div className="flex items-center gap-3">
+          <div className="p-3 bg-blue-100 rounded-xl">
+            <Table className="w-6 h-6 text-blue-600" />
+          </div>
+          <CardTitle>Detailed Hour-by-Hour Comparison</CardTitle>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto rounded-xl border border-gray-200">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200">
+                <th className="text-left py-4 px-4 text-sm font-bold text-gray-700 uppercase tracking-wider">Day</th>
+                <th className="text-center py-4 px-3 text-sm font-bold text-blue-700 uppercase tracking-wider" colSpan={2}>
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="w-3 h-3 bg-blue-500 rounded-full"></span>
+                    New Hours (GMB)
+                  </div>
+                </th>
+                <th className="text-center py-4 px-3 text-sm font-bold text-amber-700 uppercase tracking-wider" colSpan={2}>
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="w-3 h-3 bg-amber-500 rounded-full"></span>
+                    Old Hours (MINT)
+                  </div>
+                </th>
+                <th className="text-center py-4 px-4 text-sm font-bold text-gray-700 uppercase tracking-wider">Status</th>
+                <th className="text-left py-4 px-4 text-sm font-bold text-gray-700 uppercase tracking-wider">Day Remark</th>
+              </tr>
+              <tr className="bg-gray-50/50 border-b border-gray-200">
+                <th className="py-2 px-4"></th>
+                <th className="py-2 px-3 text-xs font-semibold text-blue-600">Open</th>
+                <th className="py-2 px-3 text-xs font-semibold text-blue-600">Close</th>
+                <th className="py-2 px-3 text-xs font-semibold text-amber-600">Open</th>
+                <th className="py-2 px-3 text-xs font-semibold text-amber-600">Close</th>
+                <th className="py-2 px-4"></th>
+                <th className="py-2 px-4"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {results.map((result, index) => (
+                <tr
+                  key={result.day}
+                  className={`border-b border-gray-100 transition-colors ${getRowBackground(result.status)}`}
+                >
+                  <td className="py-4 px-4">
+                    <span className="font-bold text-gray-900">{result.day}</span>
+                  </td>
+                  <td className="py-4 px-3 text-center">
+                    <span className="text-sm font-medium text-blue-700 bg-blue-100 px-2 py-1 rounded-lg">
+                      {result.newOpenTime}
+                    </span>
+                  </td>
+                  <td className="py-4 px-3 text-center">
+                    <span className="text-sm font-medium text-blue-700 bg-blue-100 px-2 py-1 rounded-lg">
+                      {result.newCloseTime}
+                    </span>
+                  </td>
+                  <td className="py-4 px-3 text-center">
+                    <span className="text-sm font-medium text-amber-700 bg-amber-100 px-2 py-1 rounded-lg">
+                      {result.oldOpenTime}
+                    </span>
+                  </td>
+                  <td className="py-4 px-3 text-center">
+                    <span className="text-sm font-medium text-amber-700 bg-amber-100 px-2 py-1 rounded-lg">
+                      {result.oldCloseTime}
+                    </span>
+                  </td>
+                  <td className="py-4 px-4 text-center">
+                    {getStatusBadge(result.status)}
+                  </td>
+                  <td className="py-4 px-4">
+                    <span className="text-sm text-gray-600 block max-w-xs" title={result.dayRemark}>
+                      {result.dayRemark}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }

@@ -3,6 +3,7 @@ export interface TimeSlot {
   close: string | null;
   is24Hours: boolean;
   isClosed: boolean;
+  isBlank: boolean;
   rawText: string;
 }
 
@@ -12,6 +13,19 @@ export interface DayHours {
   timeSlot: TimeSlot;
   notes: string[];
 }
+
+export type ChangeType = 
+  | 'EXTENDED_OPEN' 
+  | 'EXTENDED_CLOSE' 
+  | 'EXTENDED_FULL'
+  | 'REDUCED_OPEN'
+  | 'REDUCED_CLOSE'
+  | 'REDUCED_FULL'
+  | 'NO_CHANGE' 
+  | 'CLOSED_NOW' 
+  | 'OPEN_NOW' 
+  | 'BECAME_24_HOURS'
+  | 'BLANK_TO_HOURS';
 
 export interface ChangeDetails {
   openTimeChanged: boolean;
@@ -23,45 +37,48 @@ export interface ChangeDetails {
   became24Hours: boolean;
   becameClosed: boolean;
   wasClosedNowOpen: boolean;
+  wasBlankNowHasHours: boolean;
+  oldOpenTime: string | null;
+  oldCloseTime: string | null;
+  newOpenTime: string | null;
+  newCloseTime: string | null;
 }
-
-export type ChangeType = 
-  | 'EXTENDED' 
-  | 'REDUCED' 
-  | 'NO_CHANGE' 
-  | 'CLOSED_NOW' 
-  | 'OPEN_NOW' 
-  | 'BECAME_24_HOURS'
-  | 'WAS_24_HOURS';
 
 export interface ComparisonResult {
   day: string;
+  dayShort: string;
+  newOpenTime: string;
+  newCloseTime: string;
+  oldOpenTime: string;
+  oldCloseTime: string;
   oldHours: TimeSlot;
   newHours: TimeSlot;
   changeType: ChangeType;
   changeDetails: ChangeDetails;
+  status: 'Extended' | 'Reduced' | 'No Change' | 'Closed Now' | 'Open Now';
   dayRemark: string;
-  changeCategory: 'open' | 'close' | 'full' | 'none' | 'status';
+  changeCategory: 'Opening Time' | 'End Time' | 'Full Day' | 'No Change' | 'Status Change';
 }
 
-export interface GroupedRemarks {
-  extended: ComparisonResult[];
-  reduced: ComparisonResult[];
+export interface GroupedChanges {
+  reducedOpen: ComparisonResult[];
+  reducedClose: ComparisonResult[];
+  reducedFull: ComparisonResult[];
+  extendedOpen: ComparisonResult[];
+  extendedClose: ComparisonResult[];
+  extendedFull: ComparisonResult[];
   noChange: ComparisonResult[];
   closedNow: ComparisonResult[];
   openNow: ComparisonResult[];
-  became24Hours: ComparisonResult[];
-}
-
-export interface ParsedHours {
-  [key: string]: DayHours;
+  blankToHours: ComparisonResult[];
 }
 
 export interface FinalRemark {
   title: string;
   remark: string;
-  type: 'extended' | 'reduced' | 'noChange' | 'mixed';
+  type: 'reduced' | 'extended' | 'noChange' | 'blank';
   actionRequired: boolean;
+  priority: number;
 }
 
 export interface ComparisonSummary {
@@ -71,6 +88,11 @@ export interface ComparisonSummary {
   noChangeDays: number;
   closedNowDays: number;
   openNowDays: number;
-  hasChanges: boolean;
+  hasReducedHours: boolean;
+  hasExtendedHours: boolean;
   shouldUpdate: boolean;
+}
+
+export interface ParsedHours {
+  [key: string]: DayHours;
 }

@@ -8,41 +8,26 @@ interface BadgeProps {
   variant?: 'default' | 'success' | 'warning' | 'danger' | 'info' | 'outline';
   size?: 'sm' | 'md' | 'lg';
   className?: string;
-  pulse?: boolean;
 }
 
-export function Badge({ 
-  children, 
-  variant = 'default', 
-  size = 'md',
-  className,
-  pulse = false 
-}: BadgeProps) {
+export function Badge({ children, variant = 'default', size = 'md', className }: BadgeProps) {
   const variants = {
-    default: 'bg-dark-100 text-dark-700',
-    success: 'bg-success-100 text-success-700 border border-success-200',
-    warning: 'bg-warning-100 text-warning-700 border border-warning-200',
-    danger: 'bg-danger-100 text-danger-700 border border-danger-200',
-    info: 'bg-primary-100 text-primary-700 border border-primary-200',
-    outline: 'bg-transparent border-2 border-dark-300 text-dark-600',
+    default: 'bg-gray-100 text-gray-700 border border-gray-200',
+    success: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+    warning: 'bg-amber-50 text-amber-700 border border-amber-200',
+    danger: 'bg-red-50 text-red-700 border border-red-200',
+    info: 'bg-blue-50 text-blue-700 border border-blue-200',
+    outline: 'bg-transparent border-2 border-gray-300 text-gray-600',
   };
   
   const sizes = {
     sm: 'px-2 py-0.5 text-xs',
-    md: 'px-2.5 py-1 text-xs',
-    lg: 'px-3 py-1.5 text-sm',
+    md: 'px-3 py-1 text-xs',
+    lg: 'px-4 py-1.5 text-sm',
   };
   
   return (
-    <span
-      className={cn(
-        'inline-flex items-center font-medium rounded-full',
-        variants[variant],
-        sizes[size],
-        pulse && 'animate-pulse',
-        className
-      )}
-    >
+    <span className={cn('inline-flex items-center font-semibold rounded-full', variants[variant], sizes[size], className)}>
       {children}
     </span>
   );

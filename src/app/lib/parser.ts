@@ -5,6 +5,18 @@ export function parseTimeSlot(timeString: string): TimeSlot {
   const cleaned = timeString.trim();
   const lowerCleaned = cleaned.toLowerCase();
   
+  // Check for blank/empty
+  if (!cleaned || lowerCleaned === 'blank' || lowerCleaned === '-' || lowerCleaned === 'n/a') {
+    return {
+      open: null,
+      close: null,
+      is24Hours: false,
+      isClosed: false,
+      isBlank: true,
+      rawText: cleaned || 'Blank',
+    };
+  }
+  
   // Check for closed
   if (lowerCleaned === 'closed' || lowerCleaned.includes('closed')) {
     return {
@@ -12,23 +24,25 @@ export function parseTimeSlot(timeString: string): TimeSlot {
       close: null,
       is24Hours: false,
       isClosed: true,
-      rawText: cleaned,
+      isBlank: false,
+      rawText: 'Closed',
     };
   }
   
   // Check for 24 hours
-  if (lowerCleaned.includes('24 hours') || lowerCleaned === 'open 24 hours') {
+  if (lowerCleaned.includes('24 hours') || lowerCleaned === 'open 24 hours' || lowerCleaned === '24 hrs') {
     return {
       open: '12:00 AM',
       close: '11:59 PM',
       is24Hours: true,
       isClosed: false,
-      rawText: cleaned,
+      isBlank: false,
+      rawText: 'Open 24 Hours',
     };
   }
   
   // Parse time range formats
-  // Format: "9:00 AM – 10:00 PM" or "9 AM - 10 PM" or "9:00AM-10:00PM"
+  // Formats: "9:00 AM – 10:00 PM", "9 AM - 10 PM", "9:00AM-10:00PM", "9AM to 10PM"
   const timeRangePattern = /(\d{1,2}):?(\d{2})?\s*(AM|PM)?\s*[-–—to]+\s*(\d{1,2}):?(\d{2})?\s*(AM|PM)?/i;
   const match = cleaned.match(timeRangePattern);
   
@@ -42,15 +56,11 @@ export function parseTimeSlot(timeString: string): TimeSlot {
     let closePeriod = match[6]?.toUpperCase();
     
     // Infer AM/PM if not provided
-    if (!openPeriod && closePeriod) {
-      openPeriod = openHour < closeHour || (openHour > closeHour && closePeriod === 'PM') ? 'AM' : closePeriod;
+    if (!closePeriod) {
+      closePeriod = closeHour < 12 && closeHour >= 1 && closeHour < openHour ? 'PM' : 'PM';
     }
-    if (!closePeriod && openPeriod) {
-      closePeriod = closeHour < openHour ? 'PM' : openPeriod;
-    }
-    if (!openPeriod && !closePeriod) {
-      openPeriod = 'AM';
-      closePeriod = 'PM';
+    if (!openPeriod) {
+      openPeriod = openHour >= 6 && openHour <= 11 ? 'AM' : (openHour === 12 ? 'PM' : 'AM');
     }
     
     const openTime = `${openHour}:${openMin} ${openPeriod}`;
@@ -61,16 +71,18 @@ export function parseTimeSlot(timeString: string): TimeSlot {
       close: closeTime,
       is24Hours: false,
       isClosed: false,
+      isBlank: false,
       rawText: cleaned,
     };
   }
   
-  // If we can't parse, return as-is
+  // Return as blank if can't parse
   return {
     open: null,
     close: null,
     is24Hours: false,
     isClosed: false,
+    isBlank: true,
     rawText: cleaned,
   };
 }
@@ -86,7 +98,9 @@ export function parseNewBusinessHours(input: string): ParsedHours {
     const line = lines[i];
     
     // Skip header lines
-    if (line.toLowerCase() === 'hours:' || line.toLowerCase().includes('suggest new hours')) {
+    if (line.toLowerCase() === 'hours:' || 
+        line.toLowerCase().includes('suggest new hours') ||
+        line.toLowerCase() === 'hours') {
       continue;
     }
     
@@ -114,13 +128,17 @@ export function parseNewBusinessHours(input: string): ParsedHours {
             notes: [...pendingNotes],
           };
           pendingNotes = [];
+          currentDay = '';
         }
       }
     } else if (currentDay) {
       // This line might be time info or notes for the current day
-      if (line.startsWith('(') || line.toLowerCase().includes('might differ')) {
+      if (line.startsWith('(') || line.toLowerCase().includes('might differ') || line.toLowerCase().includes('hours might')) {
         pendingNotes.push(line.replace(/[()]/g, ''));
-      } else if (line.toLowerCase().includes('open') || line.toLowerCase().includes('closed') || line.match(/\d/)) {
+      } else if (line.toLowerCase().includes('open') || 
+                 line.toLowerCase().includes('closed') || 
+                 line.match(/\d/) ||
+                 line.toLowerCase() === 'closed') {
         result[currentDay] = {
           day: currentDay,
           normalizedDay: currentDay,
@@ -128,6 +146,7 @@ export function parseNewBusinessHours(input: string): ParsedHours {
           notes: [...pendingNotes],
         };
         pendingNotes = [];
+        currentDay = '';
       }
     }
   }
@@ -173,7 +192,8 @@ export function ensureAllDays(hours: ParsedHours): ParsedHours {
           close: null,
           is24Hours: false,
           isClosed: false,
-          rawText: 'Not specified',
+          isBlank: true,
+          rawText: 'Blank',
         },
         notes: [],
       };

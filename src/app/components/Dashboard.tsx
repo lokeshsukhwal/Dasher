@@ -1,16 +1,16 @@
 'use client';
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Header } from './Header';
 import { HoursInput } from './HoursInput';
 import { ComparisonTable } from './ComparisonTable';
-import { RemarksSection } from './RemarksSection';
+import { FinalRemarkCard } from './FinalRemarkCard';
 import { StatsCard } from './StatsCard';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 import { parseOldBusinessHours, parseNewBusinessHours } from '@/lib/parser';
 import { compareBusinessHours, groupResults, calculateSummary } from '@/lib/comparator';
-import { generateFinalRemarks, generateCopyableRemark } from '@/lib/remarkGenerator';
+import { generateFinalRemarks, generateCopyableRemark, generateQuickRemark } from '@/lib/remarkGenerator';
 import { ComparisonResult, FinalRemark, ComparisonSummary } from '@/types';
 import {
   Play,
@@ -30,17 +30,22 @@ export function Dashboard() {
   const [results, setResults] = useState<ComparisonResult[] | null>(null);
   const [remarks, setRemarks] = useState<FinalRemark[]>([]);
   const [copyableRemark, setCopyableRemark] = useState('');
+  const [quickRemark, setQuickRemark] = useState('');
   const [summary, setSummary] = useState<ComparisonSummary | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleCompare = useCallback(() => {
+    if (!oldHours.trim() || !newHours.trim()) {
+      setError('Please enter both old and new business hours');
+      return;
+    }
+
     setIsProcessing(true);
     setError(null);
     
-    try {
-      // Simulate processing delay for better UX
-      setTimeout(() => {
+    setTimeout(() => {
+      try {
         const parsedOld = parseOldBusinessHours(oldHours);
         const parsedNew = parseNewBusinessHours(newHours);
         
@@ -49,17 +54,20 @@ export function Dashboard() {
         const calculatedSummary = calculateSummary(comparisonResults);
         const finalRemarks = generateFinalRemarks(comparisonResults, grouped);
         const copyable = generateCopyableRemark(finalRemarks);
+        const quick = generateQuickRemark(finalRemarks);
         
         setResults(comparisonResults);
         setSummary(calculatedSummary);
         setRemarks(finalRemarks);
         setCopyableRemark(copyable);
+        setQuickRemark(quick);
         setIsProcessing(false);
-      }, 500);
-    } catch (err) {
-      setError('Failed to parse business hours. Please check the format.');
-      setIsProcessing(false);
-    }
+      } catch (err) {
+        console.error('Comparison error:', err);
+        setError('Failed to parse business hours. Please check the format and try again.');
+        setIsProcessing(false);
+      }
+    }, 600);
   }, [oldHours, newHours]);
 
   const handleReset = useCallback(() => {
@@ -68,6 +76,7 @@ export function Dashboard() {
     setResults(null);
     setRemarks([]);
     setCopyableRemark('');
+    setQuickRemark('');
     setSummary(null);
     setError(null);
   }, []);
@@ -75,12 +84,12 @@ export function Dashboard() {
   const canCompare = oldHours.trim() && newHours.trim();
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-dark-50 to-white">
+    <div className="min-h-screen bg-gray-50">
       <Header />
       
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 -mt-8 relative z-10">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 -mt-6 relative z-10">
         {/* Input Section */}
-        <section className="mb-8 animate-fade-in">
+        <section className="mb-8">
           <HoursInput
             oldHours={oldHours}
             newHours={newHours}
@@ -89,16 +98,16 @@ export function Dashboard() {
           />
           
           {/* Action Buttons */}
-          <div className="flex justify-center gap-4 mt-6">
+          <div className="flex justify-center gap-4 mt-8">
             <Button
               onClick={handleCompare}
               disabled={!canCompare}
               loading={isProcessing}
               size="lg"
               icon={<Play className="w-5 h-5" />}
-              className="min-w-[200px]"
+              className="min-w-[220px] text-base"
             >
-              Compare Hours
+              {isProcessing ? 'Analyzing...' : 'Compare Hours'}
             </Button>
             <Button
               onClick={handleReset}
@@ -112,99 +121,69 @@ export function Dashboard() {
           
           {/* Error Message */}
           {error && (
-            <div className="mt-4 p-4 bg-danger-50 border border-danger-200 rounded-xl flex items-center gap-3 text-danger-700">
-              <AlertCircle className="w-5 h-5" />
-              <span>{error}</span>
+            <div className="mt-6 p-4 bg-red-50 border-2 border-red-200 rounded-xl flex items-center gap-3 text-red-700 max-w-2xl mx-auto">
+              <AlertCircle className="w-5 h-5 flex-shrink-0" />
+              <span className="font-medium">{error}</span>
             </div>
           )}
         </section>
 
         {/* Results Section */}
         {results && summary && (
-          <section className="space-y-8 animate-slide-up">
+          <section className="space-y-8 animate-fadeIn">
             {/* Summary Stats */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              <StatsCard
-                title="Total Days"
-                value={summary.totalDays}
-                icon={Calendar}
-                variant="info"
-              />
-              <StatsCard
-                title="No Change"
-                value={summary.noChangeDays}
-                icon={Minus}
-                variant="success"
-              />
-              <StatsCard
-                title="Reduced"
-                value={summary.reducedDays}
-                icon={TrendingDown}
-                variant="danger"
-              />
-              <StatsCard
-                title="Extended"
-                value={summary.extendedDays}
-                icon={TrendingUp}
-                variant="warning"
-              />
-              <StatsCard
-                title="Now Closed"
-                value={summary.closedNowDays}
-                icon={XCircle}
-                variant="danger"
-              />
-              <StatsCard
-                title="Now Open"
-                value={summary.openNowDays}
-                icon={CheckCircle2}
-                variant="success"
-              />
+              <StatsCard title="Total Days" value={summary.totalDays} icon={Calendar} variant="info" />
+              <StatsCard title="No Change" value={summary.noChangeDays} icon={Minus} variant="success" />
+              <StatsCard title="Reduced" value={summary.reducedDays} icon={TrendingDown} variant="danger" />
+              <StatsCard title="Extended" value={summary.extendedDays} icon={TrendingUp} variant="warning" />
+              <StatsCard title="Now Closed" value={summary.closedNowDays} icon={XCircle} variant="danger" />
+              <StatsCard title="Now Open" value={summary.openNowDays} icon={CheckCircle2} variant="success" />
             </div>
 
-            {/* Action Required Alert */}
+            {/* Status Alerts */}
             {summary.shouldUpdate && (
-              <Card className="bg-danger-50 border-danger-200 border-2">
+              <Card className="bg-red-50 border-2 border-red-200">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 bg-danger-100 rounded-xl">
-                    <AlertCircle className="w-6 h-6 text-danger-600" />
+                  <div className="p-4 bg-red-100 rounded-xl">
+                    <AlertCircle className="w-8 h-8 text-red-600" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-danger-800">Action Required</h3>
-                    <p className="text-danger-700">
-                      Hours have been reduced or store is now closed. Please update the system accordingly.
+                    <h3 className="font-bold text-red-800 text-lg">🚨 Action Required - Hours Reduced</h3>
+                    <p className="text-red-700">
+                      Store hours have been reduced or store is now closed. Please update the system accordingly.
                     </p>
                   </div>
                 </div>
               </Card>
             )}
 
-            {!summary.shouldUpdate && summary.extendedDays > 0 && (
-              <Card className="bg-warning-50 border-warning-200 border-2">
+            {!summary.shouldUpdate && summary.hasExtendedHours && (
+              <Card className="bg-amber-50 border-2 border-amber-200">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 bg-warning-100 rounded-xl">
-                    <TrendingUp className="w-6 h-6 text-warning-600" />
+                  <div className="p-4 bg-amber-100 rounded-xl">
+                    <TrendingUp className="w-8 h-8 text-amber-600" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-warning-800">Extended Hours Detected</h3>
-                    <p className="text-warning-700">
-                      GMB shows extended hours. No changes required as per policy.
+                    <h3 className="font-bold text-amber-800 text-lg">⚠️ Extended Hours Detected</h3>
+                    <p className="text-amber-700">
+                      GMB shows extended hours. No changes required as this would extend store hours.
                     </p>
                   </div>
                 </div>
               </Card>
             )}
 
-            {!summary.hasChanges && summary.extendedDays === 0 && (
-              <Card className="bg-success-50 border-success-200 border-2">
+            {!summary.hasReducedHours && !summary.hasExtendedHours && (
+              <Card className="bg-emerald-50 border-2 border-emerald-200">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 bg-success-100 rounded-xl">
-                    <CheckCircle2 className="w-6 h-6 text-success-600" />
+                  <div className="p-4 bg-emerald-100 rounded-xl">
+                    <CheckCircle2 className="w-8 h-8 text-emerald-600" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-success-800">Hours Verified</h3>
-                    <p className="text-success-700">
-                      No changes detected. Business hours are up to date.
+                    <h3 className="font-bold text-emerald-800 text-lg">✅ Hours Verified - No Change</h3>
+                    <p className="text-emerald-700">
+                      No changes detected between GMB and system hours. Business hours are up to date.
                     </p>
                   </div>
                 </div>
@@ -214,33 +193,37 @@ export function Dashboard() {
             {/* Comparison Table */}
             <ComparisonTable results={results} />
 
-            {/* Remarks Section */}
-            <RemarksSection remarks={remarks} copyableRemark={copyableRemark} />
+            {/* Final Remarks */}
+            <FinalRemarkCard 
+              remarks={remarks} 
+              copyableRemark={copyableRemark}
+              quickRemark={quickRemark}
+            />
           </section>
         )}
 
         {/* Empty State */}
         {!results && !isProcessing && (
-          <section className="text-center py-16">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-dark-100 mb-6">
-              <Calendar className="w-10 h-10 text-dark-400" />
+          <section className="text-center py-20">
+            <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gray-100 mb-8">
+              <Calendar className="w-12 h-12 text-gray-400" />
             </div>
-            <h3 className="text-xl font-semibold text-dark-700 mb-2">
-              Ready to Compare
+            <h3 className="text-2xl font-bold text-gray-700 mb-3">
+              Ready to Compare Business Hours
             </h3>
-            <p className="text-dark-500 max-w-md mx-auto">
-              Paste the old and new business hours above, then click "Compare Hours" to analyze the changes.
+            <p className="text-gray-500 max-w-md mx-auto text-lg">
+              Paste the current and new business hours above, then click "Compare Hours" to analyze changes and generate remarks.
             </p>
           </section>
         )}
       </main>
 
       {/* Footer */}
-      <footer className="mt-16 py-8 border-t border-dark-200 bg-white">
+      <footer className="mt-20 py-8 border-t border-gray-200 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center text-dark-500 text-sm">
-            <p>Business Hours Comparator - Built for DoorDash Operations Team</p>
-            <p className="mt-1">Streamlining business hour verification process</p>
+          <div className="text-center text-gray-500">
+            <p className="font-semibold">Business Hours Comparator</p>
+            <p className="text-sm mt-1">Streamlining business hour verification for operations teams</p>
           </div>
         </div>
       </footer>
