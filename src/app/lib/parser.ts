@@ -6,14 +6,14 @@ export function parseTimeSlot(timeString: string): TimeSlot {
   const lowerCleaned = cleaned.toLowerCase();
   
   // Check for blank/empty
-  if (!cleaned || lowerCleaned === 'blank' || lowerCleaned === '-' || lowerCleaned === 'n/a') {
+  if (!cleaned || lowerCleaned === 'blank' || lowerCleaned === '-' || lowerCleaned === 'n/a' || lowerCleaned === '') {
     return {
       open: null,
       close: null,
       is24Hours: false,
       isClosed: false,
       isBlank: true,
-      rawText: cleaned || 'Blank',
+      rawText: 'Blank',
     };
   }
   
@@ -30,10 +30,10 @@ export function parseTimeSlot(timeString: string): TimeSlot {
   }
   
   // Check for 24 hours
-  if (lowerCleaned.includes('24 hours') || lowerCleaned === 'open 24 hours' || lowerCleaned === '24 hrs') {
+  if (lowerCleaned.includes('24 hours') || lowerCleaned === 'open 24 hours' || lowerCleaned === '24 hrs' || lowerCleaned === '24hours') {
     return {
-      open: '12:00 AM',
-      close: '11:59 PM',
+      open: '24 Hours',
+      close: '24 Hours',
       is24Hours: true,
       isClosed: false,
       isBlank: false,
@@ -57,7 +57,7 @@ export function parseTimeSlot(timeString: string): TimeSlot {
     
     // Infer AM/PM if not provided
     if (!closePeriod) {
-      closePeriod = closeHour < 12 && closeHour >= 1 && closeHour < openHour ? 'PM' : 'PM';
+      closePeriod = 'PM'; // Default to PM for closing time
     }
     if (!openPeriod) {
       openPeriod = openHour >= 6 && openHour <= 11 ? 'AM' : (openHour === 12 ? 'PM' : 'AM');
@@ -111,7 +111,6 @@ export function parseNewBusinessHours(input: string): ParsedHours {
       currentDay = normalizeDay(dayMatch[1]);
       const remainingText = line.substring(dayMatch[0].length).trim();
       
-      // Check if there's time info on the same line
       if (remainingText) {
         // Check for notes in parentheses
         const noteMatch = remainingText.match(/\(([^)]+)\)/);

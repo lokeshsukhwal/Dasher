@@ -4,14 +4,14 @@ import React, { useState, useCallback } from 'react';
 import { Header } from './Header';
 import { HoursInput } from './HoursInput';
 import { ComparisonTable } from './ComparisonTable';
-import { FinalRemarkCard } from './FinalRemarkCard';
+import { RemarksSection } from './RemarksSection';
 import { StatsCard } from './StatsCard';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 import { parseOldBusinessHours, parseNewBusinessHours } from '@/lib/parser';
 import { compareBusinessHours, groupResults, calculateSummary } from '@/lib/comparator';
-import { generateFinalRemarks, generateCopyableRemark, generateQuickRemark } from '@/lib/remarkGenerator';
-import { ComparisonResult, FinalRemark, ComparisonSummary } from '@/types';
+import { generateFinalRemarks, generateCopyableRemark } from '@/lib/remarkGenerator';
+import { ComparisonResult, FinalRemarks, ComparisonSummary } from '@/types';
 import {
   Play,
   RotateCcw,
@@ -28,9 +28,8 @@ export function Dashboard() {
   const [oldHours, setOldHours] = useState('');
   const [newHours, setNewHours] = useState('');
   const [results, setResults] = useState<ComparisonResult[] | null>(null);
-  const [remarks, setRemarks] = useState<FinalRemark[]>([]);
+  const [finalRemarks, setFinalRemarks] = useState<FinalRemarks | null>(null);
   const [copyableRemark, setCopyableRemark] = useState('');
-  const [quickRemark, setQuickRemark] = useState('');
   const [summary, setSummary] = useState<ComparisonSummary | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,15 +51,13 @@ export function Dashboard() {
         const comparisonResults = compareBusinessHours(parsedOld, parsedNew);
         const grouped = groupResults(comparisonResults);
         const calculatedSummary = calculateSummary(comparisonResults);
-        const finalRemarks = generateFinalRemarks(comparisonResults, grouped);
-        const copyable = generateCopyableRemark(finalRemarks);
-        const quick = generateQuickRemark(finalRemarks);
+        const remarks = generateFinalRemarks(comparisonResults, grouped);
+        const copyable = generateCopyableRemark(remarks);
         
         setResults(comparisonResults);
         setSummary(calculatedSummary);
-        setRemarks(finalRemarks);
+        setFinalRemarks(remarks);
         setCopyableRemark(copyable);
-        setQuickRemark(quick);
         setIsProcessing(false);
       } catch (err) {
         console.error('Comparison error:', err);
@@ -74,11 +71,33 @@ export function Dashboard() {
     setOldHours('');
     setNewHours('');
     setResults(null);
-    setRemarks([]);
+    setFinalRemarks(null);
     setCopyableRemark('');
-    setQuickRemark('');
     setSummary(null);
     setError(null);
+  }, []);
+
+  // Load sample data for testing
+  const loadSampleData = useCallback(() => {
+    setOldHours(`Wednesday: 9:00 AM – 10:00 PM
+Thursday: 9:00 AM – 10:00 PM
+Friday: 9:00 AM – 11:00 PM
+Saturday: 10:00 AM – 11:00 PM
+Sunday: 11:00 AM – 8:00 PM
+Monday: 9:00 AM – 10:00 PM
+Tuesday: 9:00 AM – 10:00 PM`);
+
+    setNewHours(`Hours: 
+Wednesday	Open 24 hours
+Thursday
+(Christmas Day)
+Open 24 hours
+Hours might differ
+Friday	Open 24 hours
+Saturday	Open 24 hours
+Sunday	Closed
+Monday	Open 24 hours
+Tuesday	Open 24 hours`);
   }, []);
 
   const canCompare = oldHours.trim() && newHours.trim();
@@ -98,7 +117,7 @@ export function Dashboard() {
           />
           
           {/* Action Buttons */}
-          <div className="flex justify-center gap-4 mt-8">
+          <div className="flex flex-wrap justify-center gap-4 mt-8">
             <Button
               onClick={handleCompare}
               disabled={!canCompare}
@@ -117,6 +136,13 @@ export function Dashboard() {
             >
               Reset
             </Button>
+            <Button
+              onClick={loadSampleData}
+              variant="outline"
+              size="lg"
+            >
+              Load Sample
+            </Button>
           </div>
           
           {/* Error Message */}
@@ -129,7 +155,7 @@ export function Dashboard() {
         </section>
 
         {/* Results Section */}
-        {results && summary && (
+        {results && summary && finalRemarks && (
           <section className="space-y-8 animate-fadeIn">
             {/* Summary Stats */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -151,7 +177,7 @@ export function Dashboard() {
                   <div>
                     <h3 className="font-bold text-red-800 text-lg">🚨 Action Required - Hours Reduced</h3>
                     <p className="text-red-700">
-                      Store hours have been reduced or store is now closed. Please update the system accordingly.
+                      Store hours have been reduced. Please update the system with the new reduced hours.
                     </p>
                   </div>
                 </div>
@@ -193,11 +219,10 @@ export function Dashboard() {
             {/* Comparison Table */}
             <ComparisonTable results={results} />
 
-            {/* Final Remarks */}
-            <FinalRemarkCard 
-              remarks={remarks} 
+            {/* Remarks Section */}
+            <RemarksSection 
+              finalRemarks={finalRemarks}
               copyableRemark={copyableRemark}
-              quickRemark={quickRemark}
             />
           </section>
         )}
@@ -211,9 +236,12 @@ export function Dashboard() {
             <h3 className="text-2xl font-bold text-gray-700 mb-3">
               Ready to Compare Business Hours
             </h3>
-            <p className="text-gray-500 max-w-md mx-auto text-lg">
-              Paste the current and new business hours above, then click "Compare Hours" to analyze changes and generate remarks.
+            <p className="text-gray-500 max-w-md mx-auto text-lg mb-6">
+              Paste the current (MINT) and new (GMB) business hours above, then click "Compare Hours" to analyze changes.
             </p>
+            <Button onClick={loadSampleData} variant="outline">
+              Try with Sample Data
+            </Button>
           </section>
         )}
       </main>
@@ -222,8 +250,8 @@ export function Dashboard() {
       <footer className="mt-20 py-8 border-t border-gray-200 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center text-gray-500">
-            <p className="font-semibold">Business Hours Comparator</p>
-            <p className="text-sm mt-1">Streamlining business hour verification for operations teams</p>
+            <p className="font-semibold">Business Hours Comparator v2.0</p>
+            <p className="text-sm mt-1">Using Google Sheets formula logic for accurate comparisons</p>
           </div>
         </div>
       </footer>

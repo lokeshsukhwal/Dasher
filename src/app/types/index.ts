@@ -14,71 +14,60 @@ export interface DayHours {
   notes: string[];
 }
 
-export type ChangeType = 
-  | 'EXTENDED_OPEN' 
-  | 'EXTENDED_CLOSE' 
-  | 'EXTENDED_FULL'
-  | 'REDUCED_OPEN'
-  | 'REDUCED_CLOSE'
-  | 'REDUCED_FULL'
-  | 'NO_CHANGE' 
-  | 'CLOSED_NOW' 
-  | 'OPEN_NOW' 
-  | 'BECAME_24_HOURS'
-  | 'BLANK_TO_HOURS';
+export type ChangeResult = 
+  | 'Full Time Extended'
+  | 'Start Time Extended'
+  | 'End Time Extended'
+  | 'Full Time Reduced'
+  | 'Start Time Reduced'
+  | 'End Time Reduced'
+  | 'Full Day Extended'
+  | 'Full Day Reduced'
+  | 'No Change'
+  | 'Incompatible Data';
 
-export interface ChangeDetails {
-  openTimeChanged: boolean;
-  closeTimeChanged: boolean;
-  openTimeExtended: boolean;
-  closeTimeExtended: boolean;
-  openTimeReduced: boolean;
-  closeTimeReduced: boolean;
-  became24Hours: boolean;
-  becameClosed: boolean;
-  wasClosedNowOpen: boolean;
-  wasBlankNowHasHours: boolean;
-  oldOpenTime: string | null;
-  oldCloseTime: string | null;
-  newOpenTime: string | null;
-  newCloseTime: string | null;
-}
+export type ClosedStatus = 
+  | 'Old Time Closed'
+  | 'New Time Closed'
+  | 'Both Open'
+  | 'Both Closed';
 
 export interface ComparisonResult {
   day: string;
   dayShort: string;
-  newOpenTime: string;
-  newCloseTime: string;
-  oldOpenTime: string;
-  oldCloseTime: string;
+  oldStartTime: string;
+  oldEndTime: string;
+  newStartTime: string;
+  newEndTime: string;
   oldHours: TimeSlot;
   newHours: TimeSlot;
-  changeType: ChangeType;
-  changeDetails: ChangeDetails;
-  status: 'Extended' | 'Reduced' | 'No Change' | 'Closed Now' | 'Open Now';
+  closedStatus: ClosedStatus;
+  result: ChangeResult;
   dayRemark: string;
-  changeCategory: 'Opening Time' | 'End Time' | 'Full Day' | 'No Change' | 'Status Change';
 }
 
 export interface GroupedChanges {
-  reducedOpen: ComparisonResult[];
-  reducedClose: ComparisonResult[];
-  reducedFull: ComparisonResult[];
-  extendedOpen: ComparisonResult[];
-  extendedClose: ComparisonResult[];
-  extendedFull: ComparisonResult[];
-  noChange: ComparisonResult[];
-  closedNow: ComparisonResult[];
-  openNow: ComparisonResult[];
-  blankToHours: ComparisonResult[];
+  reduce: {
+    'Full Time Reduced': Record<string, string[]>;
+    'Start Time Reduced': Record<string, string[]>;
+    'End Time Reduced': Record<string, string[]>;
+    'Full Day Reduced': Record<string, string[]>;
+  };
+  extend: {
+    'Full Time Extended': Record<string, string[]>;
+    'Start Time Extended': Record<string, string[]>;
+    'End Time Extended': Record<string, string[]>;
+    'Full Day Extended': Record<string, string[]>;
+  };
+  noChange: string[];
 }
 
-export interface FinalRemark {
-  title: string;
-  remark: string;
-  type: 'reduced' | 'extended' | 'noChange' | 'blank';
-  actionRequired: boolean;
-  priority: number;
+export interface FinalRemarks {
+  reduceRemark: string;
+  extendRemark: string;
+  hasReduceChanges: boolean;
+  hasExtendChanges: boolean;
+  hasNoChanges: boolean;
 }
 
 export interface ComparisonSummary {

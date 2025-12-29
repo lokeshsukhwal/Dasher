@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 interface CardProps {
   children: React.ReactNode;
   className?: string;
-  variant?: 'default' | 'glass' | 'gradient' | 'bordered';
+  variant?: 'default' | 'glass' | 'gradient';
 }
 
 export function Card({ children, className, variant = 'default' }: CardProps) {
@@ -14,7 +14,6 @@ export function Card({ children, className, variant = 'default' }: CardProps) {
     default: 'bg-white border border-gray-200 shadow-sm',
     glass: 'bg-white/80 backdrop-blur-xl border border-white/20 shadow-xl',
     gradient: 'bg-gradient-to-br from-white to-gray-50 border border-gray-100 shadow-lg',
-    bordered: 'bg-white border-2 border-gray-200',
   };
   
   return (

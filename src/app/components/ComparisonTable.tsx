@@ -3,68 +3,84 @@
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/Card';
 import { Badge } from './ui/Badge';
-import { ComparisonResult } from '@/types';
-import { Table, ArrowDown, ArrowUp, Minus, XCircle, CheckCircle } from 'lucide-react';
+import { ComparisonResult, ChangeResult } from '@/types';
+import { Table, ArrowDown, ArrowUp, Minus, XCircle, CheckCircle, Clock } from 'lucide-react';
 
 interface ComparisonTableProps {
   results: ComparisonResult[];
 }
 
 export function ComparisonTable({ results }: ComparisonTableProps) {
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'Extended':
+  const getStatusBadge = (result: ChangeResult) => {
+    switch (result) {
+      case 'Full Time Extended':
+      case 'Start Time Extended':
+      case 'End Time Extended':
+      case 'Full Day Extended':
         return (
-          <Badge variant="warning" className="gap-1">
+          <Badge variant="warning" className="gap-1 whitespace-nowrap">
             <ArrowUp className="w-3 h-3" />
-            Extended
+            {result.replace(' Extended', '')} Extended
           </Badge>
         );
-      case 'Reduced':
+      case 'Full Time Reduced':
+      case 'Start Time Reduced':
+      case 'End Time Reduced':
+      case 'Full Day Reduced':
         return (
-          <Badge variant="danger" className="gap-1">
+          <Badge variant="danger" className="gap-1 whitespace-nowrap">
             <ArrowDown className="w-3 h-3" />
-            Reduced
+            {result.replace(' Reduced', '')} Reduced
           </Badge>
         );
       case 'No Change':
         return (
-          <Badge variant="success" className="gap-1">
+          <Badge variant="success" className="gap-1 whitespace-nowrap">
             <Minus className="w-3 h-3" />
             No Change
           </Badge>
         );
-      case 'Closed Now':
-        return (
-          <Badge variant="danger" className="gap-1">
-            <XCircle className="w-3 h-3" />
-            Closed Now
-          </Badge>
-        );
-      case 'Open Now':
-        return (
-          <Badge variant="info" className="gap-1">
-            <CheckCircle className="w-3 h-3" />
-            Open Now
-          </Badge>
-        );
       default:
-        return <Badge>{status}</Badge>;
+        return (
+          <Badge variant="default" className="gap-1 whitespace-nowrap">
+            <Clock className="w-3 h-3" />
+            {result}
+          </Badge>
+        );
     }
   };
 
-  const getRowBackground = (status: string) => {
-    switch (status) {
-      case 'Extended':
-        return 'bg-amber-50/50 hover:bg-amber-50';
-      case 'Reduced':
-      case 'Closed Now':
-        return 'bg-red-50/50 hover:bg-red-50';
-      case 'No Change':
-        return 'bg-emerald-50/30 hover:bg-emerald-50/50';
-      default:
-        return 'hover:bg-gray-50';
+  const getRowBackground = (result: ChangeResult) => {
+    if (result.includes('Extended')) {
+      return 'bg-amber-50/50 hover:bg-amber-50';
     }
+    if (result.includes('Reduced')) {
+      return 'bg-red-50/50 hover:bg-red-50';
+    }
+    if (result === 'No Change') {
+      return 'bg-emerald-50/30 hover:bg-emerald-50/50';
+    }
+    return 'hover:bg-gray-50';
+  };
+
+  const getTimeStyle = (time: string, isNew: boolean) => {
+    const baseStyle = isNew 
+      ? 'text-sm font-medium text-blue-700 bg-blue-100 px-2.5 py-1 rounded-lg'
+      : 'text-sm font-medium text-amber-700 bg-amber-100 px-2.5 py-1 rounded-lg';
+    
+    if (time === 'Closed' || time === 'Blank') {
+      return isNew 
+        ? 'text-sm font-medium text-red-600 bg-red-100 px-2.5 py-1 rounded-lg'
+        : 'text-sm font-medium text-gray-600 bg-gray-100 px-2.5 py-1 rounded-lg';
+    }
+    
+    if (time === '24 Hours') {
+      return isNew 
+        ? 'text-sm font-medium text-green-700 bg-green-100 px-2.5 py-1 rounded-lg'
+        : 'text-sm font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-lg';
+    }
+    
+    return baseStyle;
   };
 
   return (
@@ -74,7 +90,10 @@ export function ComparisonTable({ results }: ComparisonTableProps) {
           <div className="p-3 bg-blue-100 rounded-xl">
             <Table className="w-6 h-6 text-blue-600" />
           </div>
-          <CardTitle>Detailed Hour-by-Hour Comparison</CardTitle>
+          <div>
+            <CardTitle>Detailed Hour-by-Hour Comparison</CardTitle>
+            <p className="text-sm text-gray-500 mt-1">Compare new GMB hours against current system hours</p>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -95,53 +114,53 @@ export function ComparisonTable({ results }: ComparisonTableProps) {
                     Old Hours (MINT)
                   </div>
                 </th>
-                <th className="text-center py-4 px-4 text-sm font-bold text-gray-700 uppercase tracking-wider">Status</th>
+                <th className="text-center py-4 px-4 text-sm font-bold text-gray-700 uppercase tracking-wider">Result</th>
                 <th className="text-left py-4 px-4 text-sm font-bold text-gray-700 uppercase tracking-wider">Day Remark</th>
               </tr>
               <tr className="bg-gray-50/50 border-b border-gray-200">
                 <th className="py-2 px-4"></th>
-                <th className="py-2 px-3 text-xs font-semibold text-blue-600">Open</th>
-                <th className="py-2 px-3 text-xs font-semibold text-blue-600">Close</th>
-                <th className="py-2 px-3 text-xs font-semibold text-amber-600">Open</th>
-                <th className="py-2 px-3 text-xs font-semibold text-amber-600">Close</th>
+                <th className="py-2 px-3 text-xs font-semibold text-blue-600">Start Time</th>
+                <th className="py-2 px-3 text-xs font-semibold text-blue-600">End Time</th>
+                <th className="py-2 px-3 text-xs font-semibold text-amber-600">Start Time</th>
+                <th className="py-2 px-3 text-xs font-semibold text-amber-600">End Time</th>
                 <th className="py-2 px-4"></th>
                 <th className="py-2 px-4"></th>
               </tr>
             </thead>
             <tbody>
-              {results.map((result, index) => (
+              {results.map((result) => (
                 <tr
                   key={result.day}
-                  className={`border-b border-gray-100 transition-colors ${getRowBackground(result.status)}`}
+                  className={`border-b border-gray-100 transition-colors ${getRowBackground(result.result)}`}
                 >
                   <td className="py-4 px-4">
                     <span className="font-bold text-gray-900">{result.day}</span>
                   </td>
                   <td className="py-4 px-3 text-center">
-                    <span className="text-sm font-medium text-blue-700 bg-blue-100 px-2 py-1 rounded-lg">
-                      {result.newOpenTime}
+                    <span className={getTimeStyle(result.newStartTime, true)}>
+                      {result.newStartTime}
                     </span>
                   </td>
                   <td className="py-4 px-3 text-center">
-                    <span className="text-sm font-medium text-blue-700 bg-blue-100 px-2 py-1 rounded-lg">
-                      {result.newCloseTime}
+                    <span className={getTimeStyle(result.newEndTime, true)}>
+                      {result.newEndTime}
                     </span>
                   </td>
                   <td className="py-4 px-3 text-center">
-                    <span className="text-sm font-medium text-amber-700 bg-amber-100 px-2 py-1 rounded-lg">
-                      {result.oldOpenTime}
+                    <span className={getTimeStyle(result.oldStartTime, false)}>
+                      {result.oldStartTime}
                     </span>
                   </td>
                   <td className="py-4 px-3 text-center">
-                    <span className="text-sm font-medium text-amber-700 bg-amber-100 px-2 py-1 rounded-lg">
-                      {result.oldCloseTime}
+                    <span className={getTimeStyle(result.oldEndTime, false)}>
+                      {result.oldEndTime}
                     </span>
                   </td>
                   <td className="py-4 px-4 text-center">
-                    {getStatusBadge(result.status)}
+                    {getStatusBadge(result.result)}
                   </td>
                   <td className="py-4 px-4">
-                    <span className="text-sm text-gray-600 block max-w-xs" title={result.dayRemark}>
+                    <span className="text-sm text-gray-600 block max-w-sm" title={result.dayRemark}>
                       {result.dayRemark}
                     </span>
                   </td>
@@ -149,6 +168,22 @@ export function ComparisonTable({ results }: ComparisonTableProps) {
               ))}
             </tbody>
           </table>
+        </div>
+        
+        {/* Legend */}
+        <div className="mt-4 flex flex-wrap gap-4 text-xs text-gray-500">
+          <div className="flex items-center gap-2">
+            <span className="w-4 h-4 bg-red-50 border border-red-200 rounded"></span>
+            <span>Reduced (Action Required)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-4 h-4 bg-amber-50 border border-amber-200 rounded"></span>
+            <span>Extended (No Action)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-4 h-4 bg-emerald-50 border border-emerald-200 rounded"></span>
+            <span>No Change</span>
+          </div>
         </div>
       </CardContent>
     </Card>
